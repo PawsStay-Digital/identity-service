@@ -1,5 +1,6 @@
 package com.pawsstay.identityservice.util;
 
+import com.pawsstay.identityservice.entity.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -21,17 +22,18 @@ public class JwtUtils {
         if (this.SECRET_KEY == null) {
             throw new RuntimeException("JWT Secret Key is not configured!");
         }
-        // 此時 secretKeyString 已經有值了
-        System.out.println(SECRET_KEY);
         this.key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String email, String role) {
+    public String generateToken(User user) {
+
         return Jwts.builder()
-                .subject(email)
-                .claim("role", role)
+                .subject(user.getEmail())
+                .claim("userId", user.getId())
+                .claim("role", user.getRole().name())
+                .claim("username", user.getUsername())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + SECRET_EXPIRATION)) // 24小時有效期
+                .expiration(new Date(System.currentTimeMillis() + SECRET_EXPIRATION * 1000))
                 .signWith(key)
                 .compact();
     }

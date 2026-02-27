@@ -10,7 +10,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
         ErrorResponse error = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(), // 或是 404，視業務邏輯而定
+                HttpStatus.UNAUTHORIZED.value(),
                 ex.getMessage(),
                 System.currentTimeMillis()
         );

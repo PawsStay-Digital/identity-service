@@ -18,12 +18,13 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
     @Column(unique = true, nullable = false)
     private String email;
 
     @Column(nullable = false)
     private String password;
+    @Column(nullable = false)
+    private String username;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -32,5 +33,6 @@ public class User {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
 }
 
