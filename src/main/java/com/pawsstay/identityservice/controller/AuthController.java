@@ -1,8 +1,6 @@
 package com.pawsstay.identityservice.controller;
 
-import com.pawsstay.identityservice.dto.LoginRequest;
-import com.pawsstay.identityservice.dto.RegisterRequest;
-import com.pawsstay.identityservice.dto.RegisterResponse;
+import com.pawsstay.identityservice.dto.*;
 import com.pawsstay.identityservice.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,8 +25,15 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         log.info("user login email:{}", request.getEmail());
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refreshToken(@RequestBody RefreshRequest request) {
+        log.debug("refreshToken for: {}", request.getRefreshToken());
+        return ResponseEntity.ok(authService.refreshToken(request));
+
     }
 }

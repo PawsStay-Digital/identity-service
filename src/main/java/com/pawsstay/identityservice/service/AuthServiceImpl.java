@@ -63,8 +63,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponse refreshToken(String refreshToken) {
-        RefreshToken oldToken = refreshTokenRepository.findRefreshTokenByToken(refreshToken)
+    public AuthResponse refreshToken(RefreshRequest request) {
+        RefreshToken oldToken = refreshTokenRepository.findRefreshTokenByToken(request.getRefreshToken())
                 .orElseThrow(() -> new UnauthorizedException("refresh token not found"));
 
         if (oldToken.getExpiryDate().isBefore(Instant.now())) {
@@ -120,11 +120,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void cleanRefreshTokens(User user) {
-        List<RefreshToken> refreshTokenList = refreshTokenRepository.findRefreshTokenByUserOrderByExpiryDateAsc(user);
-        if (refreshTokenList.size() > 10) {
-            int numberToRemove = refreshTokenList.size() - 10;
+        int MAX_REFRESH_TOKEN_AMOUNT = 5;
+        if (refreshTokenRepository.countByUser(user) >= MAX_REFRESH_TOKEN_AMOUNT) {
+            List<RefreshToken> refreshTokenList = refreshTokenRepository.findRefreshTokenByUserOrderByExpiryDateAsc(user);
             List<RefreshToken> toDelete = refreshTokenList.stream()
-                    .limit(numberToRemove)
+                    .limit(refreshTokenList.size() - MAX_REFRESH_TOKEN_AMOUNT)
                     .toList();
             refreshTokenRepository.deleteAll(toDelete);
         }
