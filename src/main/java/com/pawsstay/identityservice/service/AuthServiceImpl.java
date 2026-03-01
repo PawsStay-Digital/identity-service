@@ -24,7 +24,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuthServiceImpl implements AuthService{
+public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
@@ -33,6 +33,7 @@ public class AuthServiceImpl implements AuthService{
     private Long SECRET_EXPIRATION;
     @Value("${app.refresh-token.expiration}")
     private Long REFRESH_TOKEN_EXPIRATION;
+
     @Override
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -54,7 +55,7 @@ public class AuthServiceImpl implements AuthService{
         if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             cleanRefreshTokens(user);
             RefreshToken refreshToken = refreshTokenRepository.save(generateRefreshToken(user));
-            return generateAuthResponse(user,refreshToken);
+            return generateAuthResponse(user, refreshToken);
         } else {
             throw new UnauthorizedException("Invalid email or password");
         }
@@ -63,11 +64,18 @@ public class AuthServiceImpl implements AuthService{
     @Override
     @Transactional
     public AuthResponse refreshToken(String refreshToken) {
-        RefreshToken refreshTokenData = refreshTokenRepository.findRefreshTokenByToken(refreshToken)
+        RefreshToken oldToken = refreshTokenRepository.findRefreshTokenByToken(refreshToken)
                 .orElseThrow(() -> new UnauthorizedException("refresh token not found"));
-        User user = refreshTokenData.getUser();
-        refreshTokenRepository.saveAndFlush(generateRefreshToken(user));
-        return generateAuthResponse(user,refreshTokenData);
+
+        if (oldToken.getExpiryDate().isBefore(Instant.now())) {
+            refreshTokenRepository.delete(oldToken);
+            throw new UnauthorizedException("Refresh Token Expired");
+        }
+        RefreshToken newToken = generateRefreshToken(oldToken.getUser());
+        refreshTokenRepository.saveAndFlush(newToken);
+        refreshTokenRepository.delete(oldToken);
+
+        return generateAuthResponse(oldToken.getUser(), newToken);
     }
 
     @Override
@@ -91,7 +99,7 @@ public class AuthServiceImpl implements AuthService{
         return map2RegisterResponse(user);
     }
 
-    private RegisterResponse map2RegisterResponse(User user){
+    private RegisterResponse map2RegisterResponse(User user) {
         return RegisterResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -100,19 +108,20 @@ public class AuthServiceImpl implements AuthService{
                 .createdAt(user.getCreatedAt())
                 .build();
     }
-    private User map2UserEntity(RegisterRequest request){
+
+    private User map2UserEntity(RegisterRequest request) {
         return User.builder()
-                    .email(request.getEmail())
-                    .role(UserRole.OWNER)
-                    .password(passwordEncoder.encode(request.getPassword()))
-                    .username(request.getUsername())
-                    .build();
+                .email(request.getEmail())
+                .role(UserRole.OWNER)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .username(request.getUsername())
+                .build();
 
     }
 
-    private void cleanRefreshTokens(User user){
+    private void cleanRefreshTokens(User user) {
         List<RefreshToken> refreshTokenList = refreshTokenRepository.findRefreshTokenByUserOrderByExpiryDateAsc(user);
-        if(refreshTokenList.size() > 10){
+        if (refreshTokenList.size() > 10) {
             int numberToRemove = refreshTokenList.size() - 10;
             List<RefreshToken> toDelete = refreshTokenList.stream()
                     .limit(numberToRemove)
@@ -120,7 +129,8 @@ public class AuthServiceImpl implements AuthService{
             refreshTokenRepository.deleteAll(toDelete);
         }
     }
-    private RefreshToken generateRefreshToken(User user){
+
+    private RefreshToken generateRefreshToken(User user) {
         String refreshTokenString = UUID.randomUUID().toString();
         return RefreshToken.builder().token(refreshTokenString)
                 .user(user)
@@ -129,7 +139,7 @@ public class AuthServiceImpl implements AuthService{
 
     }
 
-    private AuthResponse generateAuthResponse(User user, RefreshToken refreshToken){
+    private AuthResponse generateAuthResponse(User user, RefreshToken refreshToken) {
         return AuthResponse.builder()
                 .accessToken(jwtUtils.generateToken(user))
                 .refreshToken(refreshToken.getToken())
