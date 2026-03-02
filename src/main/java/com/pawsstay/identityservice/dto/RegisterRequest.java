@@ -20,5 +20,6 @@ public class RegisterRequest {
     @Size(min = 6, message = "password min size 6")
     private String password;
     @NotBlank(message = "username can not be blank")
+    @Size(min = 2, max = 50, message = "username size between 2 and 50")
     private String username;
 }

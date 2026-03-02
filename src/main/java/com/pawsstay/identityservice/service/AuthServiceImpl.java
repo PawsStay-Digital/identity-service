@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -85,18 +86,25 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public RegisterResponse updateUserEmailAndUsername(UpdateUserRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            log.info("email conflict :{}", request.getEmail());
-            throw new UnauthorizedException("email conflict");
+    public AuthResponse updateUserEmailAndUsername(UUID id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UnauthorizedException("user not found when update"));
+        if (request.getEmail() != null && !user.getEmail().equals(request.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                log.info("email conflict :{}", request.getEmail());
+                throw new ConflictException("email conflict");
+            }
+            user.setEmail(request.getEmail());
         }
-        User user = userRepository.findById(UUID.fromString(request.getId()))
-                .orElseThrow(() -> new UnauthorizedException("user not found"));
-        user.setEmail(request.getEmail());
-        user.setUsername(request.getUsername());
-        userRepository.saveAndFlush(user);
-
-        return map2RegisterResponse(user);
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            user.setUsername(request.getUsername());
+        }
+        User savedUser = userRepository.saveAndFlush(user);
+        log.info("update user success id:{}, email:{}, userName:{}", savedUser.getId(), savedUser.getEmail(),
+                savedUser.getUsername());
+        refreshTokenRepository.deleteAllByUser(savedUser);
+        RefreshToken refreshToken = refreshTokenRepository.save(generateRefreshToken(user));
+        return generateAuthResponse(savedUser, refreshToken);
     }
 
     private RegisterResponse map2RegisterResponse(User user) {
