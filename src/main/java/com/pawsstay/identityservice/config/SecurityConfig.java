@@ -23,6 +23,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // 開發階段先關閉 CSRF
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // 允許註冊與登入
+                        .requestMatchers("/api/user/**").permitAll()
                         .anyRequest().authenticated()
                 );
         return http.build();
